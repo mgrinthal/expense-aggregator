@@ -1,5 +1,11 @@
-import drive_service, httplib2
+import drive_service, httplib2, csv, json, configparser
 from apiclient import discovery
+
+def get_drive_service():
+    credentials = drive_service.get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('drive', 'v3', http=http)
+    return service
 
 def get_csv_folder(service):
     results = service.files().list(
@@ -27,24 +33,42 @@ def get_csv_folder(service):
             else:
                 return csv_folder
 
+def read_csv(csv_file, json_file, headers):
+    csvfile = open(csv_file, 'r')
+    jsonfile = open(json_file, 'w')
+
+    reader = csv.DictReader(csvfile, headers)
+    for i, row in enumerate(reader):
+        if i > 1:
+            json.dump(row, jsonfile)
+            jsonfile.write('\n')
 
 def main():
-    credentials = drive_service.get_credentials()
-    http = credentials.authorize(httplib2.Http())
-    service = discovery.build('drive', 'v3', http=http)
+    # TODO: Include command line flag to pull files from drive
+    # The option could take input in yyyy-mm-dd format to find the right files or do it automatically somehow
+    # service = get_drive_service()
+    # csv_folder = get_csv_folder(service)
 
+    # if csv_folder:
+    #     expense_files = service.files().list(
+    #         q='"' + csv_folder['id'] + '" in parents').execute()
+    #     items = expense_files.get('files', [])
+    #     for item in items:
+    #         print('{0} {1}'.format(item['name'], item['id']))
+    # else:
+    #     print('No expense data found')
 
-    csv_folder = get_csv_folder(service)
+    # Open our expenses config file
+    configParser = configparser.RawConfigParser()
+    configPath = './expenses-config.txt'
+    configParser.read(configPath)
 
-    if csv_folder:
-        expense_files = service.files().list(
-            q='"' + csv_folder['id'] + '" in parents').execute()
-        items = expense_files.get('files', [])
-        for item in items:
-            print('{0} {1}'.format(item['name'], item['id']))
-    else:
-        print('No expense data found')
+    # Load account and header info from config file
+    accounts = configParser.get('Accounts', 'account_names').split(', ')
+    headers = json.loads(configParser.get('Accounts', 'headers'))
 
+    for account in accounts:
+        read_csv('expense_sheets/2017-05-20_' + account + '.csv', 'json_data/' + account + '.json', headers)
 
 if __name__ == '__main__':
     main()
