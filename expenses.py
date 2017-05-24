@@ -1,5 +1,6 @@
 import drive_service, httplib2, csv, json, configparser
 from apiclient import discovery
+from datetime import datetime
 
 def get_drive_service():
     credentials = drive_service.get_credentials()
@@ -78,6 +79,9 @@ def income(json_data, exclude_transfer=False):
                 income_list.append(entry)
 
     return income_list
+
+def parse_date(json_entry):
+    return datetime.strptime(json_entry['Date'], '%Y-%m-%d')
 
 def main():
     # TODO: Include command line flag to pull files from drive
