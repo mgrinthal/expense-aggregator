@@ -34,14 +34,50 @@ def get_csv_folder(service):
                 return csv_folder
 
 def read_csv(csv_file, json_file, headers):
-    csvfile = open(csv_file, 'r')
-    jsonfile = open(json_file, 'w')
+    csv_file_instance = open(csv_file, 'r')
+    json_file_instance = open(json_file, 'w')
+    json_data = []
 
-    reader = csv.DictReader(csvfile, headers)
+    reader = csv.DictReader(csv_file_instance, headers)
     for i, row in enumerate(reader):
         if i > 1:
-            json.dump(row, jsonfile)
-            jsonfile.write('\n')
+            json_data.append(row)
+            json.dump(row, json_file_instance)
+            json_file_instance.write('\n')
+    return json_data
+
+# Take array of json objects, sum entries matching any keyword
+def sum_entries(json_data, keyword_list):
+    total = 0
+    for entry in json_data:
+        if keyword_list and keyword_list.length:
+            if entry['Category'].lower() in keyword_list.lower():
+                if (exclude_transfer and entry['Category'] != 'Account Transfer') or not exclude_transfer:
+                    total += float(entry['Amount'])
+        else:
+            total += float(entry['Amount'])
+
+    return total
+
+# Sum expenses in given data, return total
+def expenses(json_data, exclude_transfer=False):
+    expense_list = []
+    for entry in json_data:
+        if float(entry['Amount']) < 0:
+            if (exclude_transfer and entry['Category'] != 'Account Transfer') or not exclude_transfer:
+                expense_list.append(entry)
+
+    return expense_list
+
+# Sum income in given data, return total
+def income(json_data, exclude_transfer=False):
+    income_list = []
+    for entry in json_data:
+        if float(entry['Amount']) > 0:
+            if (exclude_transfer and entry['Subcategory'] != 'Account Transfer') or not exclude_transfer:
+                income_list.append(entry)
+
+    return income_list
 
 def main():
     # TODO: Include command line flag to pull files from drive
@@ -67,8 +103,13 @@ def main():
     accounts = configParser.get('Accounts', 'account_names').split(', ')
     headers = json.loads(configParser.get('Accounts', 'headers'))
 
+    json_data = {}
+
     for account in accounts:
-        read_csv('expense_sheets/2017-05-20_' + account + '.csv', 'json_data/' + account + '.json', headers)
+        # Possible TODO: Check if json file is already present and skip running read_csv if so
+        json_data[account] = read_csv('expense_sheets/2017-05-20_' + account + '.csv', 'json_data/' + account + '.json', headers)
+        print('{0}: {1}'.format(account, sum_entries(json_data[account], [])))
+
 
 if __name__ == '__main__':
     main()
